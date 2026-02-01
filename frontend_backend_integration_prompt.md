@@ -1,42 +1,43 @@
 # Frontend-Backend Integration Instructions
 
-## Project Overview
+## Overview
 
-You are working with a Vite-React project that needs to be connected to a Python backend. The project follows this directory structure:
+Integrate a Vite-React frontend with a Python backend using dynamic code execution. The backend executes Python scripts that interact with a dynamic database via the `dynamic_db` module.
 
+**Directory Structure:**
 ```
 /root-dir
 ├── backend/
 │   └── openapi.yaml
 └── frontend/
-    ├── config/
     └── react-app/
         └── src/
             └── api/
-                └── py/
+                ├── py/          # Python scripts
+                └── *.ts         # TypeScript API functions
 ```
 
-## Integration Requirements
+## Prerequisites
 
-Your task is to integrate the React frontend with the backend API by following a specific architecture pattern.
+**Check Module Documentation First:**
+- `GET http://localhost:3000/api/v1/modules/dynamic_db`
+- Returns available functions, parameters, return types, and examples
+- **Always verify function signatures before writing Python code**
+
+## Implementation Steps
 
 ### Step 1: Refactor Data Access Layer
 
-Refactor all data access in `./frontend/react-app/src` so that **all data operations** are performed through function calls located in `./frontend/react-app/src/api/`.
+Move all data operations from components to `./frontend/react-app/src/api/`:
+- Remove hardcoded data and direct manipulation from components
+- Create clean API function interfaces
+- Components only call API functions, never access data directly
 
-- Remove any direct data manipulation or hardcoded data from components
-- Create clean API function interfaces in the `api/` directory
-- Ensure all components consume data through these API functions
+### Step 2: Initialize App Backend
 
-### Step 2: Initialize the App Backend
+**CRITICAL:** Create `./frontend/react-app/src/api/py/init_app.py` first to set up database tables and seed data.
 
-**CRITICAL FIRST STEP:** Before implementing any data operations, create `./frontend/react-app/src/api/py/init_app.py` to initialize the app backend with tables and seed data.
-
-**Required:** Check module documentation first:
-- **Endpoint:** `GET http://localhost:3000/api/v1/modules/dynamic_db`
-- This returns the complete module interface with all available functions, parameters, and examples
-
-**Pattern for `init_app.py`:**
+**Template:**
 ```python
 from custom_modules import dynamic_db
 
@@ -73,102 +74,67 @@ def run():
     }
 ```
 
-**Key Requirements:**
-1. Import: `from custom_modules import dynamic_db`
-2. Create client: `client = dynamic_db.DynamicDBClient()`
-3. Use `client.create_app(schema)` to initialize tables
-4. Return the `appId` - you'll need it for all subsequent operations
-5. Define a `run()` function that returns JSON-serializable data
+**Requirements:**
+1. Define `run()` function (sync or async)
+2. Import: `from custom_modules import dynamic_db`
+3. Create client: `client = dynamic_db.DynamicDBClient()`
+4. Call `client.create_app(schema)` to create tables
+5. Return the `appId` for all subsequent operations
 
 ### Step 3: Implement Backend Communication
 
-Each API function must communicate with the backend using the execute-code endpoint.
+**Endpoint:** `POST http://localhost:3000/api/v1/execute-code`
 
-**Execution Endpoint:**
-- **URL:** `POST http://localhost:3000/api/v1/execute-code`
-- **Request Body:**
-  ```json
-  {
-    "code": "your_python_code_string",
-    "modules": ["dynamic_db"],
-    "input": {"app_id": "...", "other_params": "..."},
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "success": {"type": "boolean"},
-        "data": {"type": "array"}
-      },
-      "required": ["success", "data"]
-    }
-  }
-  ```
-
-**Using `outputSchema` (Recommended):**
-- The `outputSchema` field is **optional but highly recommended** for ensuring consistent output formatting
-- It validates the `run()` function's return value against a JSON schema
-- If the output doesn't match the schema, an error will be returned
-- This helps catch formatting issues early and ensures type safety
-
-**Example with outputSchema:**
+**Request Format:**
 ```json
 {
-  "code": "from custom_modules import dynamic_db\n\ndef run(app_id):\n    client = dynamic_db.DynamicDBClient()\n    result = client.list_records(app_id, 'items')\n    return {'success': True, 'data': result['data']}",
+  "code": "your_python_code_string",
   "modules": ["dynamic_db"],
-  "input": {"app_id": "app_123"},
+  "input": {"app_id": "...", "param": "..."},
   "outputSchema": {
     "type": "object",
     "properties": {
       "success": {"type": "boolean"},
-      "data": {
-        "type": "array",
-        "items": {"type": "object"}
-      }
+      "data": {"type": "array"}
     },
     "required": ["success", "data"]
   }
 }
 ```
 
-**Module Information Endpoint:**
-- **URL:** `GET http://localhost:3000/api/v1/modules/:moduleName`
-- **Example:** `GET http://localhost:3000/api/v1/modules/dynamic_db`
-- **Returns:** Complete module interface including:
-  - Available functions (e.g., `create_app`, `list_records`, `create_record`)
-  - Function signatures with parameters and types
-  - Return value structures
-  - Usage examples
-
-**IMPORTANT:** Always check the module endpoint before writing Python code to ensure you use the correct function names, parameters, and return types.
-
 **Python Code Requirements:**
-1. **Must define a `run()` function** (sync or async)
-2. **Import format:** `from custom_modules import dynamic_db`
-3. **Create client instance:** `client = dynamic_db.DynamicDBClient()`
-4. **Accept input parameters:** Use the `run()` function parameters (e.g., `def run(app_id, item_id)`)
-5. **Return JSON-serializable data:** Dict, list, string, number, boolean
-6. **Match the `outputSchema`:** Ensure your return value conforms to the schema you define in the request
+1. Must define a `run()` function (sync or async) that accepts input parameters
+2. Import: `from custom_modules import dynamic_db`
+3. Create client: `client = dynamic_db.DynamicDBClient()`
+4. Return JSON-serializable data matching `outputSchema`
+5. Handle errors with try-except blocks
 
-**API Documentation:** Reference `./backend/openapi.yaml` for complete endpoint specifications.
+**Using `outputSchema` (Strongly Recommended):**
+- Validates return value against JSON schema
+- Catches type mismatches early
+- Provides clear error messages
+- Ensures consistent data shapes for TypeScript
 
-The backend executes Python code dynamically, so your API functions will:
-1. Load Python code from the `api/py/` directory
-2. Send it to the backend via the execute-code endpoint
-3. Pass input parameters through the `input` field
-4. Handle the responses appropriately
+**API Flow:**
+1. Load Python code from `./frontend/react-app/src/api/py/`
+2. POST to execute-code endpoint with code, modules, input, and outputSchema
+3. Backend executes code and validates output
+4. Handle response in TypeScript
 
-### Step 4: Organize Python Code
+### Step 4: Organize Python Scripts
 
-Store all Python code snippets in `./frontend/react-app/src/api/py/`:
+Create separate `.py` files in `./frontend/react-app/src/api/py/`:
+- `init_app.py` - Initialize database
+- `list_items.py`, `get_item.py`, `create_item.py`, `update_item.py`, `delete_item.py`
 
-- Create separate Python files for different data operations
-- Follow a logical naming convention (e.g., `init_app.py`, `list_items.py`, `create_item.py`, `get_item.py`)
-- Ensure Python code is modular and reusable
-- Include proper error handling in the Python snippets
-- Always use `from custom_modules import dynamic_db` for imports
-- Always create a `DynamicDBClient` instance in each script
-- Accept necessary parameters (especially `app_id`) through the `run()` function
+**Each script must:**
+- Define a `run()` function with input parameters
+- Import: `from custom_modules import dynamic_db`
+- Create client: `client = dynamic_db.DynamicDBClient()`
+- Include try-except error handling
+- Return JSON matching the outputSchema
 
-**Example: Complete API Function with `outputSchema`**
+**Complete Example:**
 
 **Python file:** `./frontend/react-app/src/api/py/list_items.py`
 ```python
@@ -260,129 +226,72 @@ export async function listItems(
 }
 ```
 
-## Common Pitfalls and How to Avoid Them
+## Common Mistakes to Avoid
 
-### 1. Incorrect Import Statement
-❌ **WRONG:**
-```python
-import dynamic_db
-```
-✅ **CORRECT:**
-```python
-from custom_modules import dynamic_db
-```
+| ❌ Wrong | ✅ Correct |
+|---------|----------|
+| `import dynamic_db` | `from custom_modules import dynamic_db` |
+| `dynamic_db.list_records(...)` | `client = dynamic_db.DynamicDBClient()`<br>`client.list_records(...)` |
+| No `run()` function | Always define `def run(...)` |
+| Guessing function names | Check `GET /api/v1/modules/dynamic_db` first |
+| `def run():` | `def run(app_id):` - Always pass `app_id` |
+| No error handling | Wrap in `try-except` blocks |
+| No `outputSchema` | Always include `outputSchema` for validation |
 
-### 2. Missing DynamicDBClient Instance
-❌ **WRONG:**
-```python
-def run(app_id):
-    return dynamic_db.list_records(app_id, 'items')  # Won't work!
-```
-✅ **CORRECT:**
-```python
-def run(app_id):
-    client = dynamic_db.DynamicDBClient()
-    return client.list_records(app_id, 'items')
-```
+**Critical Rules:**
+1. **Always** import as `from custom_modules import dynamic_db`
+2. **Always** create client: `client = dynamic_db.DynamicDBClient()`
+3. **Always** define a `run()` function with parameters
+4. **Always** use try-except for error handling
+5. **Always** include `outputSchema` in API calls
+6. **Always** check module docs before writing code
 
-### 3. Missing `run()` Function
-❌ **WRONG:**
-```python
-from custom_modules import dynamic_db
+## Success Criteria
 
-client = dynamic_db.DynamicDBClient()
-result = client.list_records(app_id, 'items')
-```
-✅ **CORRECT:**
+✓ Backend initialized with tables and seed data (`init_app.py`)
+✓ Clean separation: Components → API functions → Python scripts → Backend
+✓ All Python scripts follow the 6 critical rules above
+✓ All API calls include `outputSchema` for type safety
+✓ Error handling in place for all operations
+✓ TypeScript types match Python return structures
+
+## Quick Reference
+
+**Python Script Template:**
 ```python
 from custom_modules import dynamic_db
 
-def run(app_id):
-    client = dynamic_db.DynamicDBClient()
-    return client.list_records(app_id, 'items')
-```
-
-### 4. Not Checking Module Documentation
-❌ **WRONG:** Guessing function names and parameters
-✅ **CORRECT:** Always check `GET http://localhost:3000/api/v1/modules/dynamic_db` first
-
-### 5. Forgetting to Pass `app_id`
-❌ **WRONG:**
-```python
-def run():
-    client = dynamic_db.DynamicDBClient()
-    return client.list_records('items')  # Missing app_id!
-```
-✅ **CORRECT:**
-```python
-def run(app_id):
-    client = dynamic_db.DynamicDBClient()
-    return client.list_records(app_id, 'items')
-```
-
-### 6. Not Handling Errors
-❌ **RISKY:**
-```python
-def run(app_id):
-    client = dynamic_db.DynamicDBClient()
-    return client.list_records(app_id, 'items')  # Will crash on error
-```
-✅ **BETTER:**
-```python
-def run(app_id):
+def run(app_id, param1, param2=None):
     try:
         client = dynamic_db.DynamicDBClient()
-        result = client.list_records(app_id, 'items')
-        return {'success': True, 'data': result['data']}
+        result = client.some_function(app_id, param1)
+        return {'success': True, 'data': result}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 ```
 
-### 7. Not Using `outputSchema` for Validation
-❌ **MISSING VALIDATION:**
-```json
-{
-  "code": "...",
-  "modules": ["dynamic_db"],
-  "input": {"app_id": "app_123"}
-}
-```
-✅ **WITH VALIDATION:**
-```json
-{
-  "code": "...",
-  "modules": ["dynamic_db"],
-  "input": {"app_id": "app_123"},
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "success": {"type": "boolean"},
-      "data": {"type": "array"}
-    },
-    "required": ["success", "data"]
-  }
-}
+**TypeScript API Call Template:**
+```typescript
+const response = await fetch('http://localhost:3000/api/v1/execute-code', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    code: pythonCode,
+    modules: ['dynamic_db'],
+    input: { app_id: appId, param1: value },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: { type: 'array' }
+      },
+      required: ['success', 'data']
+    }
+  })
+});
 ```
 
-**Why use `outputSchema`:**
-- Ensures your Python code returns the expected structure
-- Catches type mismatches early (e.g., returning a string instead of an array)
-- Provides clear error messages when the output doesn't match
-- Acts as documentation for what the endpoint returns
-- Helps TypeScript/frontend code rely on consistent data shapes
-
-## Expected Outcome
-
-After completing this integration:
-- The app backend will be initialized with tables and seed data via `init_app.py`
-- The frontend will have a clean separation between UI and data layers
-- All backend communication will be centralized in the `api/` directory
-- Python code will be organized and maintainable in the `api/py/` directory
-- All Python scripts will:
-  - Use correct imports: `from custom_modules import dynamic_db`
-  - Create DynamicDBClient instances: `client = dynamic_db.DynamicDBClient()`
-  - Define a `run()` function that accepts input parameters
-  - Return values that match the defined `outputSchema`
-  - Use the correct module functions (verified from `GET /api/v1/modules/dynamic_db`)
-- The application will properly communicate with the backend via the `POST /api/v1/execute-code` endpoint
-- All API calls will use `outputSchema` to validate responses and ensure consistent data formatting
+**Key Endpoints:**
+- Module docs: `GET http://localhost:3000/api/v1/modules/dynamic_db`
+- Execute code: `POST http://localhost:3000/api/v1/execute-code`
+- API spec: `./backend/openapi.yaml`
