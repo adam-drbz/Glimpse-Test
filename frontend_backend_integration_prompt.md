@@ -13,8 +13,9 @@ Integrate a Vite-React frontend with a Python backend using dynamic code executi
     └── react-app/
         └── src/
             └── api/
-                ├── py/          # Python scripts
-                └── *.ts         # TypeScript API functions
+                ├── py/                    # Python scripts
+                ├── config.json            # App configuration (appId, schema)
+                └── *.ts or *.js           # API functions
 ```
 
 ## Prerequisites
@@ -70,16 +71,44 @@ def run():
     return {
         'success': True,
         'appId': app_id,
+        'schema': schema,
         'tablesCreated': result['tablesCreated']
     }
 ```
 
+**After running `init_app.py`, save the result to `config.json`:**
+
+Create `./frontend/react-app/src/api/config.json` with the returned `appId` and `schema`:
+
+```json
+{
+  "appId": "app_abc123xyz",
+  "schema": {
+    "tables": [
+      {
+        "name": "your_table_name",
+        "displayName": "Your Table",
+        "columns": [
+          {"name": "field1", "type": "text", "required": true},
+          {"name": "field2", "type": "text"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Why `config.json` is important:**
+- Stores the `appId` for all subsequent API calls
+- Provides schema reference for frontend code
+- Single source of truth for database structure
+- All other API functions load `appId` from this file
+
 **Requirements:**
-1. Define `run()` function (sync or async)
-2. Import: `from custom_modules import dynamic_db`
-3. Create client: `client = dynamic_db.DynamicDBClient()`
-4. Call `client.create_app(schema)` to create tables
-5. Return the `appId` for all subsequent operations
+1. Run `init_app.py` first to get `appId` and `schema`
+2. **Save the output to `config.json` immediately**
+3. All other API functions must read `appId` from `config.json`
+4. Never hardcode `appId` in individual API functions
 
 ### Step 3: Implement Backend Communication
 
@@ -113,26 +142,31 @@ def run():
 - Validates return value against JSON schema
 - Catches type mismatches early
 - Provides clear error messages
-- Ensures consistent data shapes for TypeScript
+- Ensures consistent data shapes for frontend code
 
 **API Flow:**
 1. Load Python code from `./frontend/react-app/src/api/py/`
 2. POST to execute-code endpoint with code, modules, input, and outputSchema
 3. Backend executes code and validates output
-4. Handle response in TypeScript
+4. Handle response in your frontend code
 
 ### Step 4: Organize Python Scripts
 
 Create separate `.py` files in `./frontend/react-app/src/api/py/`:
-- `init_app.py` - Initialize database
+- `init_app.py` - Initialize database (run first, outputs to `config.json`)
 - `list_items.py`, `get_item.py`, `create_item.py`, `update_item.py`, `delete_item.py`
 
 **Each script must:**
-- Define a `run()` function with input parameters
+- Define a `run()` function with input parameters (especially `app_id`)
 - Import: `from custom_modules import dynamic_db`
 - Create client: `client = dynamic_db.DynamicDBClient()`
 - Include try-except error handling
 - Return JSON matching the outputSchema
+
+**Frontend API functions must:**
+- Import `config.json` to get the `appId`
+- Pass `appId` to Python scripts via the `input` parameter
+- Never hardcode the `appId`
 
 **Complete Example:**
 
@@ -163,27 +197,22 @@ def run(app_id, limit=100, offset=0):
         }
 ```
 
-**TypeScript API function:** `./frontend/react-app/src/api/listItems.ts`
-```typescript
-interface ListItemsResponse {
-  success: boolean;
-  data: Array<{
-    id: number;
-    [key: string]: any;
-  }>;
-  pagination?: {
-    total: number;
-    limit: number;
-    offset: number;
-  };
-  error?: string;
-}
+**Frontend API function:** `./frontend/react-app/src/api/listItems.js` (or `.ts`)
+```javascript
+import config from './config.json';
 
-export async function listItems(
-  appId: string,
-  limit = 100,
-  offset = 0
-): Promise<ListItemsResponse> {
+// TypeScript: Add interface at the top
+// interface ListItemsResponse {
+//   success: boolean;
+//   data: Array<{ id: number; [key: string]: any }>;
+//   pagination?: { total: number; limit: number; offset: number };
+//   error?: string;
+// }
+
+export async function listItems(limit = 100, offset = 0) {
+  // Load appId from config.json
+  const { appId } = config;
+
   const pythonCode = await fetch('/api/py/list_items.py').then(r => r.text());
 
   const response = await fetch('http://localhost:3000/api/v1/execute-code', {
@@ -226,6 +255,8 @@ export async function listItems(
 }
 ```
 
+**Important:** All API functions should load `appId` from `config.json` - never pass it as a parameter or hardcode it.
+
 ## Common Mistakes to Avoid
 
 | ❌ Wrong | ✅ Correct |
@@ -237,6 +268,7 @@ export async function listItems(
 | `def run():` | `def run(app_id):` - Always pass `app_id` |
 | No error handling | Wrap in `try-except` blocks |
 | No `outputSchema` | Always include `outputSchema` for validation |
+| Hardcoding `appId` | Load from `config.json`: `import config from './config.json'` |
 
 **Critical Rules:**
 1. **Always** import as `from custom_modules import dynamic_db`
@@ -245,15 +277,18 @@ export async function listItems(
 4. **Always** use try-except for error handling
 5. **Always** include `outputSchema` in API calls
 6. **Always** check module docs before writing code
+7. **Always** load `appId` from `config.json` - never hardcode it
 
 ## Success Criteria
 
 ✓ Backend initialized with tables and seed data (`init_app.py`)
+✓ `config.json` created with `appId` and `schema` from initialization
+✓ All API functions load `appId` from `config.json`
 ✓ Clean separation: Components → API functions → Python scripts → Backend
-✓ All Python scripts follow the 6 critical rules above
+✓ All Python scripts follow the 7 critical rules above
 ✓ All API calls include `outputSchema` for type safety
 ✓ Error handling in place for all operations
-✓ TypeScript types match Python return structures
+✓ Frontend code matches Python return structures (use TypeScript interfaces if applicable)
 
 ## Quick Reference
 
@@ -270,28 +305,46 @@ def run(app_id, param1, param2=None):
         return {'success': False, 'error': str(e)}
 ```
 
-**TypeScript API Call Template:**
-```typescript
-const response = await fetch('http://localhost:3000/api/v1/execute-code', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    code: pythonCode,
-    modules: ['dynamic_db'],
-    input: { app_id: appId, param1: value },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        data: { type: 'array' }
-      },
-      required: ['success', 'data']
-    }
-  })
-});
+**JavaScript/TypeScript API Call Template:**
+```javascript
+import config from './config.json';
+
+export async function myApiFunction(param1) {
+  // Load appId from config
+  const { appId } = config;
+
+  const pythonCode = await fetch('/api/py/my_script.py').then(r => r.text());
+
+  const response = await fetch('http://localhost:3000/api/v1/execute-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: pythonCode,
+      modules: ['dynamic_db'],
+      input: { app_id: appId, param1 },
+      outputSchema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          data: { type: 'array' }
+        },
+        required: ['success', 'data']
+      }
+    })
+  });
+
+  const result = await response.json();
+
+  if (result.status === 'success') {
+    return result.output;
+  } else {
+    throw new Error(result.error || 'Execution failed');
+  }
+}
 ```
 
-**Key Endpoints:**
+**Key Resources:**
+- Config file: `./frontend/react-app/src/api/config.json` (contains `appId`)
 - Module docs: `GET http://localhost:3000/api/v1/modules/dynamic_db`
 - Execute code: `POST http://localhost:3000/api/v1/execute-code`
 - API spec: `./backend/openapi.yaml`
