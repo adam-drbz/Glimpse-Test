@@ -1,1 +1,1579 @@
-/Users/jinli/Demos/DynamicPyExecServer/openapi.yaml
+openapi: 3.0.3
+info:
+  title: Dynamic DB Server API
+  description: API for managing dynamic database resources and schemas
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: http://localhost:5021/api
+    description: Local docker test server
+  - url: http://34.32.211.153:5021/api
+    description: Remote docker test server
+
+paths:
+  /v1/apps:
+    post:
+      summary: Create or update application resources
+      description: Creates or updates database tables and schema definitions for an application
+      operationId: createApp
+      tags:
+        - Applications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceSchema"
+            examples:
+              galleryApp:
+                summary: Gallery application example
+                value:
+                  tables:
+                    - name: gallery_items
+                      displayName: Gallery Items
+                      columns:
+                        - name: category
+                          displayName: Category
+                          type: text
+                        - name: image_url
+                          displayName: Image URL
+                          type: text
+                        - name: title
+                          displayName: Title
+                          type: text
+                        - name: year
+                          displayName: Year
+                          type: text
+                      relations:
+                        - type: many-to-one
+                          targetTable: categories
+                          sourceColumn: category_id
+                          targetColumn: id
+                    - name: categories
+                      displayName: Categories
+                      columns:
+                        - name: label
+                          displayName: Label
+                          type: text
+                        - name: slug
+                          displayName: Slug
+                          type: text
+                  workflows:
+                    - name: content_approval
+                      description: Workflow for approving gallery content
+                      meta: {}
+                      steps:
+                        - id: submit
+                          nodeType: start
+                          config: {}
+                          categories: submission
+                          dependsOn: []
+                        - id: review
+                          nodeType: approval
+                          config:
+                            approvers: ["editor", "admin"]
+                          categories: review
+                          dependsOn: ["submit"]
+                        - id: publish
+                          nodeType: action
+                          config: {}
+                          categories: publishing
+                          dependsOn: ["review"]
+      responses:
+        "201":
+          description: Application resources created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Application resources created successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tablesCreated:
+                    type: array
+                    items:
+                      type: string
+                    example: ["gallery_items", "categories"]
+                  workflowsCreated:
+                    type: array
+                    items:
+                      type: string
+                    example: ["content_approval"]
+        "400":
+          description: Bad request - invalid schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      summary: List all applications
+      description: Retrieves a list of all registered applications
+      operationId: listApps
+      tags:
+        - Applications
+      responses:
+        "200":
+          description: Successfully retrieved applications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  apps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        appId:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        tables:
+                          type: array
+                          items:
+                            type: string
+                        workflows:
+                          type: array
+                          items:
+                            type: string
+
+  /v1/apps/{appId}:
+    get:
+      summary: Get application by ID
+      description: Retrieves a specific application's schema and metadata by its ID
+      operationId: getAppById
+      tags:
+        - Applications
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      responses:
+        "200":
+          description: Successfully retrieved application
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  appId:
+                    type: string
+                    example: app_123abc
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2024-01-30T10:30:00Z"
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    example: "2024-01-30T15:45:00Z"
+                  schema:
+                    $ref: "#/components/schemas/ResourceSchema"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Update application by ID
+      description: Updates an existing application's schema and recreates database tables
+      operationId: updateAppById
+      tags:
+        - Applications
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceSchema"
+      responses:
+        "200":
+          description: Application updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Application updated successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tablesUpdated:
+                    type: array
+                    items:
+                      type: string
+                    example: ["gallery_items", "categories"]
+                  workflowsUpdated:
+                    type: array
+                    items:
+                      type: string
+                    example: ["content_approval"]
+        "400":
+          description: Bad request - invalid schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete application by ID
+      description: Deletes an application and all its associated database tables
+      operationId: deleteAppById
+      tags:
+        - Applications
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      responses:
+        "200":
+          description: Application deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Application deleted successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tablesDeleted:
+                    type: array
+                    items:
+                      type: string
+                    example: ["gallery_items", "categories"]
+                  workflowsDeleted:
+                    type: array
+                    items:
+                      type: string
+                    example: ["content_approval"]
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/apps/{appId}/tables:
+    get:
+      summary: List all tables in an application
+      description: Retrieves a list of all tables defined in the application
+      operationId: listTables
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      responses:
+        "200":
+          description: Successfully retrieved tables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Table"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Add a new table to an application
+      description: Creates a new table in the application's database
+      operationId: createTable
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Table"
+            example:
+              name: products
+              displayName: Products
+              columns:
+                - name: name
+                  displayName: Product Name
+                  type: text
+                - name: price
+                  displayName: Price
+                  type: float
+                - name: in_stock
+                  displayName: In Stock
+                  type: boolean
+      responses:
+        "201":
+          description: Table created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table created successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tableName:
+                    type: string
+                    example: products
+        "400":
+          description: Bad request - invalid table schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Conflict - table already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/apps/{appId}/tables/query:
+    post:
+      summary: Execute a SQL query
+      description: Executes a raw SQL query against the application's database
+      operationId: executeQuery
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: The SQL query to execute
+                  example: SELECT * FROM gallery_items WHERE category = ? ORDER BY year DESC
+                params:
+                  type: array
+                  description: Parameters for parameterized queries (prevents SQL injection). Can contain strings, numbers, booleans, or null values.
+                  items:
+                    nullable: true
+                  example: ["landscapes"]
+                readonly:
+                  type: boolean
+                  description: If true, only SELECT queries are allowed (default false)
+                  default: false
+                  example: true
+              required:
+                - query
+            examples:
+              selectQuery:
+                summary: Simple SELECT query with parameters
+                value:
+                  query: SELECT * FROM gallery_items WHERE category = ? ORDER BY year DESC
+                  params: ["landscapes"]
+                  readonly: true
+              joinQuery:
+                summary: JOIN query
+                value:
+                  query: |
+                    SELECT g.*, c.label as category_label
+                    FROM gallery_items g
+                    JOIN categories c ON g.category_id = c.id
+                    WHERE g.year = ?
+                  params: ["2024"]
+                  readonly: true
+              insertQuery:
+                summary: INSERT query
+                value:
+                  query: INSERT INTO gallery_items (title, category, year) VALUES (?, ?, ?)
+                  params: ["New Image", "landscapes", "2024"]
+                  readonly: false
+      responses:
+        "200":
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    description: Query results (for SELECT queries)
+                    items:
+                      type: object
+                      additionalProperties: true
+                  rowsAffected:
+                    type: integer
+                    description: Number of rows affected (for INSERT/UPDATE/DELETE)
+                    example: 1
+                  lastInsertId:
+                    type: integer
+                    description: Last inserted ID (for INSERT queries)
+                    example: 456
+                  executionTime:
+                    type: number
+                    description: Query execution time in milliseconds
+                    example: 12.5
+              examples:
+                selectResult:
+                  summary: SELECT query result
+                  value:
+                    success: true
+                    data:
+                      - id: 1
+                        title: Mountain Solitude
+                        category: landscapes
+                        year: "2024"
+                      - id: 11
+                        title: Desert Silence
+                        category: landscapes
+                        year: "2024"
+                    executionTime: 8.2
+                insertResult:
+                  summary: INSERT query result
+                  value:
+                    success: true
+                    rowsAffected: 1
+                    lastInsertId: 456
+                    executionTime: 5.1
+        "400":
+          description: Bad request - invalid query or readonly violation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: Readonly violation
+                message: Non-SELECT query attempted with readonly flag set to true
+        "403":
+          description: Forbidden - query not allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error or SQL error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                success: false
+                error: SQL Error
+                message: "SQLITE_ERROR: no such table: invalid_table"
+
+  /v1/apps/{appId}/tables/{tableName}:
+    get:
+      summary: Get table by ID
+      description: Retrieves a specific table's schema and metadata
+      operationId: getTableById
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+      responses:
+        "200":
+          description: Successfully retrieved table
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Table"
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Update table by ID
+      description: Updates a table's schema (recreates the table with new schema)
+      operationId: updateTableById
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Table"
+      responses:
+        "200":
+          description: Table updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table updated successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tableName:
+                    type: string
+                    example: gallery_items
+        "400":
+          description: Bad request - invalid table schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete table by ID
+      description: Deletes a table from the application's database
+      operationId: deleteTableById
+      tags:
+        - Tables
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+      responses:
+        "200":
+          description: Table deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Table deleted successfully
+                  appId:
+                    type: string
+                    example: app_123abc
+                  tableName:
+                    type: string
+                    example: gallery_items
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/apps/{appId}/tables/{tableName}/records:
+    get:
+      summary: List records from a table
+      description: Retrieves records from a table with support for filtering, sorting, joins, and pagination
+      operationId: listRecords
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+        - name: filter
+          in: query
+          required: false
+          description: |
+            JSON filter criteria supporting advanced operations and logical operators.
+
+            **Simple format (equality only, backward compatible):**
+            `{"category":"landscapes","year":"2024"}`
+
+            **Advanced format with operators:**
+            Single condition: `{"field":"year","op":"gt","value":"2020"}`
+
+            **Logical operators (and/or):**
+            AND conditions: `{"and":[{"field":"year","op":"ge","value":"2020"},{"field":"category","op":"eq","value":"landscapes"}]}`
+            OR conditions: `{"or":[{"field":"year","op":"eq","value":"2024"},{"field":"year","op":"eq","value":"2023"}]}`
+
+            **Nested conditions:**
+            ```json
+            {
+              "and": [
+                {
+                  "or": [
+                    {"field":"category","op":"eq","value":"landscapes"},
+                    {"field":"category","op":"in","value":["urban","portraits"]}
+                  ]
+                },
+                {"field":"year","op":"ge","value":"2020"}
+              ]
+            }
+            ```
+
+            **Filtering on joined tables (use table prefix):**
+            When using the `join` parameter, you can filter on joined table columns:
+            - Filter on base table: `{"field":"gallery_items.year","op":"ge","value":"2020"}`
+            - Filter on joined table: `{"field":"categories.label","op":"eq","value":"Landscapes"}`
+            - Combined filter: `{"and":[{"field":"gallery_items.year","op":"ge","value":"2020"},{"field":"categories.label","op":"eq","value":"Landscapes"}]}`
+
+            **Supported operators:**
+            - `eq`: equals (default)
+            - `ne`: not equals
+            - `lt`: less than
+            - `gt`: greater than
+            - `le`: less than or equal
+            - `ge`: greater than or equal
+            - `in`: value in array (value must be an array)
+            - `like`: SQL LIKE pattern matching (use % for wildcards)
+          schema:
+            oneOf:
+              - type: object
+                description: Simple equality filter (backward compatible)
+                additionalProperties: true
+                example:
+                  category: landscapes
+                  year: "2024"
+              - $ref: "#/components/schemas/FilterCondition"
+              - $ref: "#/components/schemas/FilterGroup"
+          examples:
+            simpleFilter:
+              summary: Simple equality filter
+              value: '{"category":"landscapes"}'
+            singleCondition:
+              summary: Single condition with operator
+              value: '{"field":"year","op":"gt","value":"2020"}'
+            andConditions:
+              summary: Multiple AND conditions
+              value: '{"and":[{"field":"year","op":"gte","value":"2020"},{"field":"category","op":"eq","value":"landscapes"}]}'
+            orConditions:
+              summary: Multiple OR conditions
+              value: '{"or":[{"field":"category","op":"eq","value":"landscapes"},{"field":"category","op":"eq","value":"urban"}]}'
+            inOperator:
+              summary: IN operator with array
+              value: '{"field":"category","op":"in","value":["landscapes","urban","portraits"]}'
+            likeOperator:
+              summary: LIKE operator with wildcards
+              value: '{"field":"title","op":"like","value":"%mountain%"}'
+            nestedConditions:
+              summary: Nested AND/OR conditions
+              value: '{"and":[{"or":[{"field":"category","op":"eq","value":"landscapes"},{"field":"category","op":"eq","value":"urban"}]},{"field":"year","op":"ge","value":"2020"}]}'
+            joinedTableFilter:
+              summary: Filter on joined table
+              value: '{"field":"categories.label","op":"eq","value":"Landscapes"}'
+            combinedJoinFilter:
+              summary: Combined filter across joined tables
+              value: '{"and":[{"field":"gallery_items.year","op":"ge","value":"2020"},{"field":"categories.label","op":"in","value":["Landscapes","Urban"]}]}'
+        - name: sort
+          in: query
+          required: false
+          description: Sort order (e.g., "title:asc" or "year:desc")
+          schema:
+            type: string
+          example: year:desc
+        - name: join
+          in: query
+          required: false
+          description: Related tables to join (comma-separated)
+          schema:
+            type: string
+          example: categories
+        - name: fields
+          in: query
+          required: false
+          description: Fields to return (comma-separated, default is all)
+          schema:
+            type: string
+          example: id,title,year
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of records to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          example: 50
+        - name: offset
+          in: query
+          required: false
+          description: Number of records to skip (for pagination)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          example: 0
+        - name: page
+          in: query
+          required: false
+          description: Page number (alternative to offset)
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        "200":
+          description: Successfully retrieved records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 100
+                      limit:
+                        type: integer
+                        example: 50
+                      offset:
+                        type: integer
+                        example: 0
+                      page:
+                        type: integer
+                        example: 1
+                      totalPages:
+                        type: integer
+                        example: 2
+        "400":
+          description: Bad request - invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a new record
+      description: Creates a new record in the table
+      operationId: createRecord
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              category: landscapes
+              image_url: https://example.com/image.jpg
+              alt: Mountain view
+              title: Alpine Summit
+              year: "2024"
+      responses:
+        "201":
+          description: Record created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Record created successfully
+                  id:
+                    type: integer
+                    example: 123
+                  data:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Bad request - invalid record data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/apps/{appId}/tables/{tableName}/records/{recordId}:
+    get:
+      summary: Get a single record by ID
+      description: Retrieves a specific record from the table
+      operationId: getRecordById
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+        - name: recordId
+          in: path
+          required: true
+          description: The ID of the record
+          schema:
+            type: integer
+          example: 123
+        - name: join
+          in: query
+          required: false
+          description: Related tables to join (comma-separated)
+          schema:
+            type: string
+          example: categories
+      responses:
+        "200":
+          description: Successfully retrieved record
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Application, table, or record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Update a record by ID
+      description: Updates an existing record in the table
+      operationId: updateRecordById
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+        - name: recordId
+          in: path
+          required: true
+          description: The ID of the record
+          schema:
+            type: integer
+          example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              title: Updated Title
+              year: "2025"
+      responses:
+        "200":
+          description: Record updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Record updated successfully
+                  data:
+                    type: object
+                    additionalProperties: true
+        "400":
+          description: Bad request - invalid record data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application, table, or record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a record by ID
+      description: Deletes a record from the table
+      operationId: deleteRecordById
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+        - name: recordId
+          in: path
+          required: true
+          description: The ID of the record
+          schema:
+            type: integer
+          example: 123
+      responses:
+        "200":
+          description: Record deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Record deleted successfully
+        "404":
+          description: Application, table, or record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/apps/{appId}/tables/{tableName}/aggregate:
+    get:
+      summary: Perform aggregation on table data
+      description: Execute aggregation queries (count, sum, avg, min, max) with grouping
+      operationId: aggregateRecords
+      tags:
+        - Records
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The unique identifier of the application
+          schema:
+            type: string
+          example: app_123abc
+        - name: tableName
+          in: path
+          required: true
+          description: The name/identifier of the table
+          schema:
+            type: string
+          example: gallery_items
+        - name: function
+          in: query
+          required: true
+          description: Aggregation function to apply
+          schema:
+            type: string
+            enum: [count, sum, avg, min, max]
+          example: count
+        - name: field
+          in: query
+          required: false
+          description: Field to aggregate on (not needed for count)
+          schema:
+            type: string
+          example: year
+        - name: groupBy
+          in: query
+          required: false
+          description: Fields to group by (comma-separated)
+          schema:
+            type: string
+          example: category
+        - name: filter
+          in: query
+          required: false
+          description: |
+            JSON filter criteria to apply before aggregation. Supports the same advanced filtering as the list records endpoint.
+
+            **Supported operators:** eq, ne, lt, gt, le, ge, in, like
+            **Logical operators:** and, or
+
+            See /v1/apps/{appId}/tables/{tableName}/records filter parameter for detailed examples.
+          schema:
+            oneOf:
+              - type: object
+                description: Simple equality filter
+                additionalProperties: true
+              - $ref: "#/components/schemas/FilterCondition"
+              - $ref: "#/components/schemas/FilterGroup"
+          examples:
+            simpleFilter:
+              summary: Simple equality filter
+              value: '{"year":"2024"}'
+            advancedFilter:
+              summary: Advanced filter with operators
+              value: '{"and":[{"field":"year","op":"gte","value":"2020"},{"field":"category","op":"in","value":["landscapes","urban"]}]}'
+      responses:
+        "200":
+          description: Successfully performed aggregation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    oneOf:
+                      - type: number
+                        description: Single aggregation result
+                      - type: array
+                        description: Grouped aggregation results
+                        items:
+                          type: object
+                          additionalProperties: true
+                  aggregation:
+                    type: object
+                    properties:
+                      function:
+                        type: string
+                        example: count
+                      field:
+                        type: string
+                        example: year
+                      groupBy:
+                        type: array
+                        items:
+                          type: string
+                        example: [category]
+              examples:
+                simpleCount:
+                  summary: Simple count aggregation
+                  value:
+                    result: 100
+                    aggregation:
+                      function: count
+                groupedCount:
+                  summary: Grouped count aggregation
+                  value:
+                    result:
+                      - category: landscapes
+                        count: 40
+                      - category: portraits
+                        count: 30
+                      - category: urban
+                        count: 30
+                    aggregation:
+                      function: count
+                      groupBy: [category]
+        "400":
+          description: Bad request - invalid aggregation parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Application or table not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    ResourceSchema:
+      type: object
+      description: JSON schema for defining app resources in list of tables and their columns
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/Table"
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workflow"
+      required:
+        - tables
+
+    Table:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the table in the database
+          example: gallery_items
+        displayName:
+          type: string
+          description: The display name of the table, if different from the db name
+          example: Gallery Items
+        columns:
+          type: array
+          description: The columns in the table. id column is not required to be defined here as it is created by default.
+          items:
+            $ref: "#/components/schemas/Column"
+        relations:
+          type: array
+          description: The relations to other tables, notice that the corresponding foreign key columns must be defined in the columns array
+          items:
+            $ref: "#/components/schemas/Relation"
+      required:
+        - name
+        - columns
+
+    Column:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the field/column in the database
+          example: image_url
+        displayName:
+          type: string
+          description: The display name of the field, if different from the db name
+          example: Image URL
+        type:
+          type: string
+          description: The sql data type of the field
+          enum:
+            - text
+            - float
+            - integer
+            - boolean
+            - date
+            - datetime
+            - json
+            - blob
+          example: text
+      required:
+        - name
+        - type
+
+    Relation:
+      type: object
+      properties:
+        type:
+          type: string
+          description: The type of relation
+          enum:
+            - one-to-one
+            - one-to-many
+            - many-to-one
+            - many-to-many
+          example: many-to-one
+        targetTable:
+          type: string
+          description: The name of the target table in the relation
+          example: categories
+        sourceColumn:
+          type: string
+          description: The source column in the relation
+          example: category_id
+        targetColumn:
+          type: string
+          description: The target column in the relation
+          example: id
+      required:
+        - type
+        - targetTable
+        - sourceColumn
+        - targetColumn
+
+    Workflow:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the workflow
+          example: workflow
+        description:
+          type: string
+          description: Description of the workflow
+          example: Workflow steps and statuses
+        meta:
+          type: object
+          description: Metadata for the workflow
+          additionalProperties: true
+          example: {}
+        steps:
+          type: array
+          description: The steps in the workflow
+          items:
+            $ref: "#/components/schemas/WorkflowStep"
+      required:
+        - name
+        - steps
+
+    WorkflowStep:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the step
+          example: step_1
+        nodeType:
+          type: string
+          description: The type of node/step
+          example: approval
+        config:
+          type: object
+          description: Configuration for the step
+          additionalProperties: true
+          example: {}
+        categories:
+          type: string
+          description: Categories for the step
+          example: review
+        dependsOn:
+          type: array
+          description: The IDs of other steps this step depends on
+          items:
+            type: string
+          example: ["step_0"]
+      required:
+        - id
+        - nodeType
+
+    FilterCondition:
+      type: object
+      description: Single filter condition with field, operator, and value
+      properties:
+        field:
+          type: string
+          description: The field name to filter on
+          example: year
+        op:
+          type: string
+          description: The comparison operator
+          enum:
+            - eq
+            - ne
+            - lt
+            - gt
+            - le
+            - ge
+            - in
+            - like
+          example: gte
+        value:
+          description: The value to compare against (can be string, number, boolean, array for 'in' operator)
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            - type: array
+              items: {}
+          example: "2020"
+      required:
+        - field
+        - op
+        - value
+
+    FilterGroup:
+      type: object
+      description: Group of filter conditions combined with AND or OR
+      properties:
+        and:
+          type: array
+          description: Array of conditions that must all be true (AND)
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/FilterCondition"
+              - $ref: "#/components/schemas/FilterGroup"
+        or:
+          type: array
+          description: Array of conditions where at least one must be true (OR)
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/FilterCondition"
+              - $ref: "#/components/schemas/FilterGroup"
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Invalid schema format
+        message:
+          type: string
+          example: The provided schema does not match the required format
