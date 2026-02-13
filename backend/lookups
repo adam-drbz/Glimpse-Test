@@ -1,0 +1,334 @@
+### Valid values for queries
+
+Ecah section below lists valid values when querying data.
+
+## Dealers (dealer)
+
+ABG Sundal Collier
+ABN Amro
+Academy Securities
+ADCAP Securities
+Admiralty Harbour
+AFS Brokers
+Agricultural Bank of China
+Alamo Capital
+Alliance Global Partners
+American Veterans Group
+Amerivet Securities
+Amherst Pierpont
+ANZ
+Apollo
+Arctic Securities
+ASL Capital Markets
+B.C. Ziegler
+Baader Bank
+Balanz Capital
+Banc Promos
+Banca Akros
+Banca IMI
+Banco BPM
+Banco BTG Pactual
+Banco Itau
+Banco Sabadell
+Bancroft Capital
+Bank of America
+Bank of China
+Bank of Montreal
+Bank Safra Sarasin
+Barclays
+Barrenjoey Markets
+Bay Crest Partners
+Bayerische Landesbank
+BBVA
+BCP Securities
+Belle Haven Investments
+Benchmark Securities
+BGC
+BMO
+BNP Paribas
+BNY Mellon
+BOK Financial
+Bondpartners
+Bonds.com
+Bradesco
+Brean Capital
+BRED Banque Populaire
+Bridport
+Brownstone Investment Group
+BTG Pactual Europe LLP
+BTIG
+Cabrera Capital Markets
+Caixabank
+Cantor Fitzgerald
+Carax
+Carnegie Investment Bank
+Carty
+Castleoak Securities
+CIBC
+CIC
+CICC
+CIMB
+Citadel Securities
+Citi
+Citic Securities
+Citizens Capital Markets
+CL King
+Clarksons Securities
+CLSA
+Colliers Securities
+Commerzbank
+Commonwealth Bank of Australia
+Consensus Fondkommission
+Cowen
+Credicorp Capital
+Credit Agricole
+Credit Industriel et Commercial (CRC)
+D.A. Davidson
+Daiwa
+Danske Bank
+Davenport & Company
+DBS
+Deka Bank
+Desjardins Securities
+Deutsche Bank
+Dinosaur Financial Group
+DNB
+DZ Bank
+EFG Capital
+Equita SIM
+Erste Bank
+Euwax AG
+Falcon Square
+Fearnley
+FHN Financial
+Fidelity
+Fifth Third Bank
+Fifth Third Securities
+First Abu Dhabi Bank
+First Ballantyne
+First Horizon Bank
+First Tryon Securities
+Firstrand Bank
+Flow Traders
+FMS Bonds
+GFI
+Goldman Sachs
+Gottex Securities
+Great Pacific Securities
+Guggenhein Securities
+Hauck & Aufhaeuser
+Headlands Tech
+Helaba Landesbank
+Herbert J Sims
+Hilltop Securities
+HPC
+HSBC
+Huatai
+Huntington Securities
+HVB
+ICBC
+ICE Bonds
+ICICI Bank
+Imperial Bank of Commerce
+Imperial Capital
+ING
+Institutional Bond Network
+Intermoney Valores
+Intesa Sanpaolo
+INTL FCStone Financial
+Invest Securities
+ISP Securities
+J.P. Morgan
+Jane Street
+Janney Montgomery Scott
+Jefferies
+Jeffrey Matthews Financial Group
+Julius Baer
+Jyske Bank
+KB Securities
+KBC Bank
+Kepler Cheuvreux
+Keybanc
+KNG
+Larrain Vial
+LBBW
+Leonteq Securities
+Liquidnet
+Lloyds
+Loop Capital Markets
+Marex
+Mariva Capital
+MarketAxess
+Mediobanca
+Mesirow
+Metzler Bank
+Middlegate Securities
+Millennium Advisors
+Mirabaud
+Mizuho
+Monte Dei Paschi Di Siena
+Morgan Stanley
+Mountainside Securities
+MUFG
+MWB Fairtrade
+NAB
+NATALLIANCE SECURITIES
+National Bank Financial
+National Bank of Canada
+Natixis
+NatWest Markets
+Nedbank
+Nomura
+Norddeutsche Landesbank
+Nordea Bank
+OCTO
+ODDO
+Odeon Capital Group
+Old Mission
+OP Bank
+Oppenheimer
+OTP Bank
+Pareto
+Penserra Securities
+Performance Trust
+Piper Jaffrey
+Piper Sandler
+Piraeus Bank
+PNC Capital Markets
+Pohjola Bank
+PPF
+R. Seelaus
+Rabobank
+Raiffeisen Bank
+Ramirez & Co
+Raymond James
+RBC
+Robert Baird
+Roosevelt & Cross
+Samuel A. Ramirez
+Santander
+Scotia Bank
+Scotiabank
+Seaport
+SEB
+Seminario y Cia. Sociedad Agente de Bolsa
+Siebert Williams Shank
+Sierra Pacific
+SMBC
+SMBC BANK EU AG FRANKFURT
+Societe Generale
+Southwest Securities
+Sparebank 1 Markets As
+Standard Chartered
+State Street Bank
+Stephens
+Stern Brothers
+Sterne Agee
+Stifel Nicholaus
+Stifel Nicolaus
+StoneX
+Sumridge Partners
+Suntrust
+Susquehanna
+Svenska Handelsbanken
+Swedbank
+TCBI Securities
+TD Securities
+Texas Regional Bank
+Tigress Financial Partners LLC
+TP ICAP
+TPCG
+Tradeweb
+Tradition
+Truist Financial
+U.S. Bancorp
+UBS
+UMB Bank
+UniCredit
+Unknown
+US Bancorp
+Valcourt
+Virtu
+Virus Captial Markets
+Wells Fargo
+Westpac
+Winterflood
+Zeus Financial
+Zions Capital Markets
+ZKB
+
+## Products (bond_category)
+
+Credit (No Rating)
+EM Corporate
+EM Sovereign
+HY Credit
+IG Credit
+Municipal
+Sovereign
+SSA
+
+## Sectors (sector)
+
+Autos
+Consumer Discretionary
+Consumer Staples
+Energy
+Financials
+Industrials
+Municipal
+Real Estate
+Sovereign
+Sovereign Agency
+Sub Sovereign
+Sub Sovereign Agency
+Supranational
+TMT
+Utilities
+
+## Regions (region)
+
+EM ASIA
+EM CEEMEA
+EM LATAM
+G10
+Non-G10
+
+## Seniorities (seniority)
+
+Additional Tier 1
+Dated Senior
+Dated Subordinated Guaranteed Notes
+Junior Subordinated
+Lien-1
+Lien-2
+Lien-3
+Restricted Tier 1
+Senior
+Senior Guaranteed Notes
+Senior Non-Preferred
+Senior Preferred
+Senior Subordinated
+Senior Unsubordinated
+Subordinated
+Tier 1 Capital
+Tier 1 Subordinated
+Tier 2 Capital
+Tier 2 Subordinated
+Tier 3 Subordinated
+Undated Subordinated
+Unsubordinated
+
+## Credit Grade (credit_grade)
+
+High Yield (aka "HY")
+Investment Grade (aka "IG")
+
+## Maturity
+
+0-2yr
+2-5yr
+5-10yr
+10-15yr
+15-30yr
+30yr+
