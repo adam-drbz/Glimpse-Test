@@ -22,8 +22,8 @@ function fmtDateKey(d) {
 
 function getDatesForPeriod(period, mode) {
   const today = new Date()
-  // Market mode: end date is lagged 30 days
-  const endDate = mode === 'market'
+  // Market and compare modes: end date is lagged 30 days
+  const endDate = mode !== 'client'
     ? new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
     : today
 
@@ -215,8 +215,8 @@ function App() {
       const [ly, lm] = latest.split('-').map(Number)
       const from = `${ey}-${String(em).padStart(2, '0')}-01`
       let toDate = new Date(ly, lm, 1)
-      // In market mode, cap the end date at today - 30 days
-      if (context === 'market') {
+      // In market/compare mode, cap the end date at today - 30 days
+      if (context !== 'client') {
         const today = new Date()
         const marketCutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30)
         const dayAfterCutoff = new Date(marketCutoff)
@@ -239,7 +239,7 @@ function App() {
 
   return (
     <div className="w-full min-h-screen bg-navy-950">
-      <Header onMenuClick={() => setSideNavOpen(!sideNavOpen)} />
+      <Header onMenuClick={() => setSideNavOpen(!sideNavOpen)} context={context} />
 
       <div className="flex pt-16 min-h-screen">
         <SideNav isOpen={sideNavOpen} />
@@ -262,26 +262,23 @@ function App() {
                   {/* Row 1: Context + Date selectors */}
                   <div className="flex items-center gap-3 justify-end">
                     <div className="flex bg-navy-850 border border-subtle rounded overflow-hidden">
-                      <button
-                        onClick={() => setContext('market')}
-                        className={`px-3 py-1.5 text-xs font-mono transition-colors ${
-                          context === 'market'
-                            ? 'bg-cyan-500 text-navy-950 font-semibold'
-                            : 'text-muted hover:text-secondary'
-                        }`}
-                      >
-                        Market
-                      </button>
-                      <button
-                        onClick={() => setContext('client')}
-                        className={`px-3 py-1.5 text-xs font-mono transition-colors ${
-                          context === 'client'
-                            ? 'bg-cyan-500 text-navy-950 font-semibold'
-                            : 'text-muted hover:text-secondary'
-                        }`}
-                      >
-                        Client
-                      </button>
+                      {[
+                        { key: 'market', label: 'Market' },
+                        { key: 'client', label: 'Client' },
+                        { key: 'compare', label: 'Compare' },
+                      ].map(c => (
+                        <button
+                          key={c.key}
+                          onClick={() => setContext(c.key)}
+                          className={`px-3 py-1.5 text-xs font-mono transition-colors ${
+                            context === c.key
+                              ? 'bg-cyan-500 text-navy-950 font-semibold'
+                              : 'text-muted hover:text-secondary'
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
                     </div>
 
                     <div className="flex bg-navy-850 border border-subtle rounded overflow-hidden">

@@ -1,6 +1,6 @@
 import glimpseLogo from '../assets/glimpse-logo_white.svg'
 
-function Header({ onMenuClick }) {
+function Header({ onMenuClick, context }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-navy-900 border-b border-default scanline-container">
       <div className="flex items-center justify-between h-full px-6">
@@ -25,8 +25,20 @@ function Header({ onMenuClick }) {
         </button>
 
         {/* Logo */}
-        <div className="flex items-center ml-6 flex-1">
+        <div className="flex items-center ml-6">
           <img src={glimpseLogo} alt="Glimpse" className="h-8" />
+        </div>
+
+        {/* Center: Delay banner (market/compare modes) */}
+        <div className="flex-1 flex justify-center">
+          {context !== 'client' && (
+            <div className="flex items-center gap-2 px-4 py-1 rounded bg-orange-500/10 border border-orange-500/30">
+              <span className="material-symbols-outlined text-[16px]" style={{ color: '#f97316' }}>schedule</span>
+              <span className="text-xs font-mono font-semibold" style={{ color: '#f97316' }}>
+                Glimpse Ranking data is delayed by 30 days
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

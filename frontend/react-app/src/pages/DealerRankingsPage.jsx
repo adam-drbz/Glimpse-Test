@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import DealerVolumeChart from '../components/DealerVolumeChart'
+import DealerComparisonChart from '../components/DealerComparisonChart'
 import WeeklyDealerVolumeChart from '../components/WeeklyDealerVolumeChart'
 
 export default function DealerRankingsPage({ dateFrom, dateTo, context, filters }) {
@@ -7,9 +8,13 @@ export default function DealerRankingsPage({ dateFrom, dateTo, context, filters 
 
   return (
     <>
-      {/* Dealer Volume Chart */}
+      {/* Dealer Volume Chart — or Comparison Chart in compare mode */}
       <div className="mb-8 opacity-0 animate-fade-in-up delay-100">
-        <DealerVolumeChart dateFrom={dateFrom} dateTo={dateTo} context={context} filters={filters} />
+        {context === 'compare' ? (
+          <DealerComparisonChart dateFrom={dateFrom} dateTo={dateTo} filters={filters} />
+        ) : (
+          <DealerVolumeChart dateFrom={dateFrom} dateTo={dateTo} context={context} filters={filters} />
+        )}
       </div>
 
       {/* Weekly Dealer Volume Chart */}
