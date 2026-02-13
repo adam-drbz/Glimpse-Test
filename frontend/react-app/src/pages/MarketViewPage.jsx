@@ -22,7 +22,12 @@ function fmtDateDMY(val) {
 
 function fmtTime(val) {
   if (!val) return '—'
+  // Handle time-only strings like "14:30:00" or full datetimes
+  if (typeof val === 'string' && /^\d{2}:\d{2}/.test(val)) {
+    return val.slice(0, 8)
+  }
   const d = new Date(val)
+  if (isNaN(d.getTime())) return String(val)
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
@@ -289,7 +294,7 @@ export default function MarketViewPage({ dateFrom, dateTo, context, filters }) {
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
-                    className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider text-muted font-semibold cursor-pointer hover:text-cyan transition-colors whitespace-nowrap select-none"
+                    className="px-4 py-2.5 text-left text-xs uppercase tracking-wider text-primary font-semibold cursor-pointer hover:text-cyan transition-colors whitespace-nowrap select-none"
                   >
                     <div className="flex items-center gap-1">
                       {col.label}
@@ -303,7 +308,7 @@ export default function MarketViewPage({ dateFrom, dateTo, context, filters }) {
               {/* Filter row */}
               <tr className="border-b border-subtle bg-navy-950/50">
                 {displayColumns.map(col => (
-                  <th key={col.key} className="px-3 py-1.5">
+                  <th key={col.key} className="px-4 py-2">
                     <input
                       type="text"
                       placeholder="Filter..."
@@ -336,16 +341,16 @@ export default function MarketViewPage({ dateFrom, dateTo, context, filters }) {
               {!loading && !error && data.map((row, i) => (
                 <tr
                   key={row.id || i}
-                  className="border-b border-subtle/30 transition-colors hover:bg-navy-850/50"
+                  className="border-b border-default transition-colors hover:bg-navy-850/50"
                 >
                   {displayColumns.map(col => {
                     const val = row[col.key]
                     let display = col.format ? col.format(val) : (val ?? '—')
 
                     // Color-code the Side column
-                    let cellClass = 'px-3 py-2 text-secondary whitespace-nowrap'
+                    let cellClass = 'px-4 py-1.5 text-primary whitespace-nowrap'
                     if (col.key === 'side') {
-                      cellClass = `px-3 py-2 whitespace-nowrap font-semibold ${
+                      cellClass = `px-4 py-1.5 whitespace-nowrap font-semibold ${
                         val === 'Buy' ? 'text-cyan' : val === 'Sell' ? 'text-red-400' : 'text-secondary'
                       }`
                     }

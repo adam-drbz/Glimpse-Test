@@ -1,0 +1,20 @@
+These are the columns used (from Glimpse Ratio) and Output Table:
+Notional Volume = size_in_eur_v2
+10yr Vol = Notional Volume * 10yr Ratio_Glimpse (Column F from Glimpse Ratio Table)
+Value (MM) = Notional Volume * Price (Output table)
+10yr Value = Value (MM) * 10yr Ratio_Glimpse (Column F from Glimpse Ratio Table)
+Commission = ( $ Per MM-  (Column J from Glimpse Ratio Table) * size_in_usd_v2 ) * usd_to_eur_conversion_rate (To get EUR Equivalent) (Both columns are in the output table)
+
+
+
+
+Tailwind was not set up by default. That should be our standard.  Enfore theme.css and design tokens.
+React-router-dom was not set up by default.  It should be there, with a pages folder already.
+
+Sorting by date THEN time
+
+If you want combined date+time sorting in the future, we'd need to either:
+
+Switch to executeQuery with SQL ORDER BY trade_date DESC, trade_time DESC and implement manual pagination (a COUNT query + LIMIT/OFFSET)
+Ask the backend team to add a composite datetime column or support multi-field sorting
+Let me know if you'd like to pursue either of those approaches.

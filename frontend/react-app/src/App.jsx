@@ -166,6 +166,7 @@ function App() {
   const [selectedSectors, setSelectedSectors] = useState([])
   const [selectedRegions, setSelectedRegions] = useState([])
   const [selectedSeniorities, setSelectedSeniorities] = useState([])
+  const [includeUnknown, setIncludeUnknown] = useState(false)
 
   function handlePeriodClick(key) {
     setPeriod(key)
@@ -200,8 +201,9 @@ function App() {
     sectors: selectedSectors,
     regions: selectedRegions,
     seniorities: selectedSeniorities,
+    includeUnknown,
     _clientId: CLIENT_ID,
-  }), [selectedProducts, selectedSectors, selectedRegions, selectedSeniorities])
+  }), [selectedProducts, selectedSectors, selectedRegions, selectedSeniorities, includeUnknown])
 
   // Compute dates synchronously from period or selected months
   const { dateFrom, dateTo } = useMemo(() => {
@@ -244,8 +246,8 @@ function App() {
 
         <main
           className={`
-            flex-1 p-8 transition-all duration-300
-            ${sideNavOpen ? 'ml-64' : 'ml-16'}
+            p-8 transition-all duration-300 min-w-0
+            ${sideNavOpen ? 'ml-64 w-[calc(100%-16rem)]' : 'ml-16 w-[calc(100%-4rem)]'}
           `}
         >
           <div>
@@ -348,6 +350,38 @@ function App() {
                         onClear={() => setSelectedSeniorities([])}
                       />
                     </div>
+                  </div>
+
+                  {/* Row 3: Unknown dealers toggle */}
+                  <div className="flex items-center gap-3 justify-end">
+                    {!includeUnknown && (
+                      <span className="text-[10px] font-mono text-muted italic">
+                        Unknown dealers excluded from tables &amp; charts, included in total volumes
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setIncludeUnknown(prev => !prev)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono transition-colors rounded ${
+                        includeUnknown
+                          ? 'bg-cyan-500 text-navy-950 font-semibold'
+                          : 'bg-navy-850 border border-subtle text-muted hover:text-secondary'
+                      }`}
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0"
+                        style={{
+                          borderColor: includeUnknown ? 'rgba(0,30,40,0.4)' : 'rgba(255,255,255,0.2)',
+                          backgroundColor: includeUnknown ? 'rgba(0,30,40,0.2)' : 'transparent',
+                        }}
+                      >
+                        {includeUnknown && (
+                          <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                            <path d="M1 3L3 5L7 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </span>
+                      Unknowns
+                    </button>
                   </div>
                 </div>
               </div>

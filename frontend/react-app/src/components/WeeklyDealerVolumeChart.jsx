@@ -33,6 +33,9 @@ function buildExtraFilters(filters, context) {
     sql += ` AND glimpse_buy_side = ?`
     params.push(filters._clientId)
   }
+  if (!filters?.includeUnknown) {
+    sql += ` AND counter_party IS NOT NULL AND counter_party NOT IN ('Unknown', 'Unknown Dealer')`
+  }
   for (const [key, col] of [
     ['products', 'secmst_bond_category'],
     ['sectors', 'secmst_glimpse_sector'],
@@ -166,11 +169,13 @@ export default function WeeklyDealerVolumeChart({ dateFrom, dateTo, context, fil
         SELECT
           trade_date,
           side,
-          COALESCE(counter_party, 'Unknown') as dealer,
-          SUM(size_in_eur_v2) as volume
+          counter_party as dealer,
+          SUM(size_in_eur_v2) as volume,
+          SUM(size_in_MM_capped_num * currency_to_usd_conversion_rate * usd_to_eur_conversion_rate) as displayVolume
         FROM trade_records
         WHERE trade_date >= ? AND trade_date < ?
           AND side IN ('Buy', 'Sell')
+          AND counter_party IS NOT NULL
           ${extra.sql}
         GROUP BY trade_date, side, counter_party
         ORDER BY trade_date
@@ -197,47 +202,44 @@ export default function WeeklyDealerVolumeChart({ dateFrom, dateTo, context, fil
     if (!rawData?.length) return { chartData: [], buyStackOrder: [], sellStackOrder: [], legendDealers: [], dealerColors: {} }
 
     // 1. Bucket rows into ISO weeks, separated by side
-    // weekMap[weekKey] = { label, buy: { dealer -> vol }, sell: { dealer -> vol } }
+    // Track both volume (size_in_eur_v2, for ranking) and displayVolume (size_in_MM_capped_num, for chart)
     const weekMap = {}
+    const globalRankTotals = {} // dealer -> total volume for ranking
     for (const row of rawData) {
       const { weekKey, label } = getISOWeekLabel(row.trade_date)
-      if (!weekMap[weekKey]) weekMap[weekKey] = { label, buy: {}, sell: {} }
+      if (!weekMap[weekKey]) weekMap[weekKey] = { label, buy: {}, sell: {}, buyDisplay: {}, sellDisplay: {} }
       const bucket = weekMap[weekKey]
-      const side = row.side === 'Sell' ? 'sell' : 'buy'
+      // Flip: trade side is buy-side perspective; dealer side is opposite
+      const side = row.side === 'Buy' ? 'sell' : 'buy'
+      const displaySide = side + 'Display'
       bucket[side][row.dealer] = (bucket[side][row.dealer] || 0) + (row.volume || 0)
+      bucket[displaySide][row.dealer] = (bucket[displaySide][row.dealer] || 0) + (row.displayVolume || 0)
+      globalRankTotals[row.dealer] = (globalRankTotals[row.dealer] || 0) + (row.volume || 0)
     }
 
-    // 2. Determine top 10 dealers globally by total volume (Buy + Sell combined)
-    const globalTotals = {}
-    for (const week of Object.values(weekMap)) {
-      for (const dealers of [week.buy, week.sell]) {
-        for (const [dealer, vol] of Object.entries(dealers)) {
-          globalTotals[dealer] = (globalTotals[dealer] || 0) + vol
-        }
-      }
-    }
-    const sortedDealers = Object.entries(globalTotals)
+    // 2. Determine top 10 dealers globally by total volume (for ranking only)
+    const sortedDealers = Object.entries(globalRankTotals)
       .sort((a, b) => b[1] - a[1])
     const top = sortedDealers.slice(0, 10).map(d => d[0])
     const topSet = new Set(top)
 
-    // 3. Build chart data — one entry per week
+    // 3. Build chart data using displayVolume for values
     // Buy values are positive, Sell values are negative
     const sortedWeeks = Object.entries(weekMap).sort((a, b) => a[0].localeCompare(b[0]))
     const OTHER_LABEL = 'All Other Dealers'
-    const data = sortedWeeks.map(([weekKey, { label, buy, sell }]) => {
+    const data = sortedWeeks.map(([weekKey, { label, buyDisplay, sellDisplay }]) => {
       const entry = { weekKey, label }
       let otherBuy = 0
       let otherSell = 0
 
-      for (const [dealer, vol] of Object.entries(buy)) {
+      for (const [dealer, vol] of Object.entries(buyDisplay)) {
         if (topSet.has(dealer)) {
           entry[BUY_PREFIX + dealer] = vol
         } else {
           otherBuy += vol
         }
       }
-      for (const [dealer, vol] of Object.entries(sell)) {
+      for (const [dealer, vol] of Object.entries(sellDisplay)) {
         if (topSet.has(dealer)) {
           entry[SELL_PREFIX + dealer] = -vol // negative for downward stack
         } else {
@@ -334,8 +336,8 @@ export default function WeeklyDealerVolumeChart({ dateFrom, dateTo, context, fil
         </h3>
         <p className="text-xs font-mono text-muted">
           Weekly EUR volume (MM) — top 10 dealers + others &middot;
-          <span className="text-cyan ml-1">Buy ▲</span>
-          <span className="text-red-400 ml-2">Sell ▼</span>
+          <span className="text-cyan ml-1">Dealer Buys ▲</span>
+          <span className="text-red-400 ml-2">Dealer Sells ▼</span>
         </p>
       </div>
 

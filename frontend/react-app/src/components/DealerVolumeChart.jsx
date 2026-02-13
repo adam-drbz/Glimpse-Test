@@ -28,6 +28,9 @@ function buildExtraFilters(filters, context) {
     sql += ` AND glimpse_buy_side = ?`
     params.push(filters._clientId)
   }
+  if (!filters?.includeUnknown) {
+    sql += ` AND counter_party IS NOT NULL AND counter_party NOT IN ('Unknown', 'Unknown Dealer')`
+  }
   for (const [key, col] of [['products', 'secmst_bond_category'], ['sectors', 'secmst_glimpse_sector'], ['regions', 'secmst_region'], ['seniorities', 'secmst_seniority']]) {
     if (filters?.[key]?.length > 0) {
       sql += ` AND ${col} IN (${filters[key].map(() => '?').join(', ')})`
